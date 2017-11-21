@@ -9,6 +9,7 @@ from reinforcementLearner.neural_net import NeuralNet
 
 class Bot:
     def __init__(self, location, name, processor="GPU"):
+        #print("FJTYFYITFTKYFKYUT")
         current_directory = os.path.dirname(os.path.abspath(__file__))
         model_location = os.path.join(current_directory, os.path.pardir, "models", location)
         self._name = name
@@ -24,9 +25,11 @@ class Bot:
         Play a game using stdin/stdout.
         """
 
+        game_hist = []
+
         # Initialize the game.
         game = hlt.Game(self._name)
-
+        f = open("testFile_"+self._name, "w")
         while True:
             # Update the game map.
             game_map = game.update_map()
@@ -34,6 +37,12 @@ class Bot:
 
             # Produce features for each planet.
             features = self.produce_features(game_map)
+            for planet in features:
+                for element in planet:
+                    f.write(str(element) + ",")
+                f.write("\n")
+            f.write("-\n")
+            #game_hist.append(features)
 
             # Find predictions which planets we should send ships to.
             predictions = self._neural_net.predict(features)

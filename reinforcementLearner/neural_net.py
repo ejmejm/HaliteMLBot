@@ -29,7 +29,6 @@ class NeuralNet(object):
     FOURTH_LAYER_SIZE = 32
 
     def __init__(self, cached_model=None, seed=None, processor="GPU"):
-        #print("TRASDASDASDFASFASDF")
         self._graph = tf.Graph()
         with tf.device("/" + processor.lower() + ":0"):
             with self._graph.as_default():
@@ -47,8 +46,8 @@ class NeuralNet(object):
                 # target_distribution describes what the bot did in a real game.
                 # For instance, if it sent 20% of the ships to the first planet and 15% of the ships to the second planet,
                 # then expected_distribution = [0.2, 0.15 ...]
-                self._target_distribution = tf.placeholder(dtype=tf.float32, name="target_distribution",
-                                                           shape=(None, PLANET_MAX_NUM))
+                # self._target_distribution = tf.placeholder(dtype=tf.float32, name="target_distribution",
+                #                                            shape=(None, PLANET_MAX_NUM))
 
                 # Combine all the planets from all the frames together, so it's easier to share
                 # the weights and biases between them in the network.
@@ -60,16 +59,21 @@ class NeuralNet(object):
                 fourth_layer = tf.contrib.layers.fully_connected(third_layer, self.FOURTH_LAYER_SIZE)
 
                 fifth_layer = tf.contrib.layers.fully_connected(fourth_layer, 1, activation_fn=None)
-                #with open('workfile', 'w') as f:
-                #    f.write("ASDHUAISHDUIASHUIDHUASIHDUHASDHIUASHDUIASHIBD" + fifth_layer)
+
                 # Group the planets back in frames.
                 logits = tf.reshape(fifth_layer, [-1, PLANET_MAX_NUM])
 
+                self._reward_holder = tf.placeholder(tf.float32, [None], name="reward_holder")
+                #action_holder = tf.placeholder(tf.float32, [None, PLANET_MAX_NUM], name="action_holder")
+
+                #responsible_outputs = tf.gather(tf.reshape(logits, [-1]), tf.range(0, tf.shape(logits)[0] * tf.shape(logits)[1]) + action_holder)
+
                 self._prediction_normalized = tf.nn.softmax(logits)
 
-                self._loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits=logits, labels=self._target_distribution))
+                # self._loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits=logits, labels=self._target_distribution))
+                self._loss = -tf.reduce_mean(tf.log(logits) * self._reward_holder)
 
-                self._optimizer = tf.train.AdamOptimizer(learning_rate=5e-5).minimize(self._loss)
+                self._optimizer = tf.train.AdamOptimizer(learning_rate=1e-4).minimize(self._loss)
                 self._saver = tf.train.Saver()
 
                 if cached_model is None:
@@ -77,7 +81,7 @@ class NeuralNet(object):
                 else:
                     self._saver.restore(self._session, cached_model)
 
-    def fit(self, input_data, expected_output_data):
+    def fit(self, input_data, reward):
         """
         Perform one step of training on the training data.
 
@@ -87,7 +91,7 @@ class NeuralNet(object):
         """
         loss, _ = self._session.run([self._loss, self._optimizer],
                                     feed_dict={self._features: normalize_input(input_data),
-                                               self._target_distribution: expected_output_data})
+                                               self._reward_holder: reward})
         return loss
 
     def predict(self, input_data):
