@@ -25,11 +25,18 @@ class Bot:
         Play a game using stdin/stdout.
         """
 
-        game_hist = []
-
         # Initialize the game.
         game = hlt.Game(self._name)
-        f = open("testFile_"+self._name, "w")
+        dir_files = os.listdir("rlData")
+        new_index = 0
+        for f in dir_files:
+            try:
+                f_index = int(f[9:-5])
+                if f[:9] == "gameData_" and f_index >= new_index:
+                    new_index = f_index + 1
+            except ValueError:
+                continue
+        f = open("rlData/gameData_"+str(new_index)+".data", "w")
         while True:
             # Update the game map.
             game_map = game.update_map()
