@@ -23,12 +23,65 @@ def main():
     if args.seed is not None:
         np.random.seed(args.seed)
 
-    #neural_net = NeuralNet(cached_model=args.cache)
+    #gen_data(2)
 
-    gen_data(10)
+    read_data()
+
+    # for s in range(args.steps):
+    #     start = (s * args.minibatch_size) % training_data_size
+    #     end = start + args.minibatch_size
+    #     training_loss = nn.fit(training_input[start:end], training_output[start:end])
+    #     if s % 25 == 0 or s == args.steps - 1:
+    #         validation_loss = nn.compute_loss(validation_input, validation_output)
+    #         print("Step: {}, cross validation loss: {}, training_loss: {}".format(s, validation_loss, training_loss))
+    #         curves.append((s, training_loss, validation_loss))
+    #
+    # cf = pd.DataFrame(curves, columns=['step', 'training_loss', 'cv_loss'])
+    # fig = cf.plot(x='step', y=['training_loss', 'cv_loss']).get_figure()
+    #
+    # # Save the trained model, so it can be used by the bot
+    # current_directory = os.path.dirname(os.path.abspath(__file__))
+    # model_path = os.path.join(current_directory, os.path.pardir, "models", args.model_name + ".ckpt")
+    # print("Training finished, serializing model to {}".format(model_path))
+    # nn.save(model_path)
+    # print("Model serialized")
+    #
+    # curve_path = os.path.join(current_directory, os.path.pardir, "models", args.model_name + "_training_plot.png")
+    # fig.savefig(curve_path)
+
+def read_data():
+    x_data = []
+    rewards = []
+
+    for file in os.listdir("rlData/"):
+        if file.endswith(".data"):
+            with open(os.path.join("rlData/", file), "r") as f:
+                f.readline()
+                n_planets = int(f.readline())
+                x_turn = []
+                rewards_turn = []
+
+                done = False
+                while not done:
+                    x_turn.append([])
+                    rewards_turn.append(0)
+                    for i in range(n_planets):
+                        line = f.readline()[:-2]
+                        val_line = line.split(",")
+                        x_turn[-1].append([float(val) for val in val_line[:-1]])
+                        x_turn[-1][-1].append(float(val_line[-1] == "True"))
+                    if f.readline()[:-1] == "-!":
+                        done = True
+                        if f.readline() == "WIN":
+                            rewards_turn[-1] = 1
+                        else:
+                            rewards_turn[-1] = -1
+                discount_rewards(rewards_turn)
+
+            x_data.extend(x_turn)
+            rewards.extend(rewards_turn)
 
 def gen_data(samples):
-
     # Min of 2 samples
     if samples == 1:
         samples = 2
@@ -60,24 +113,21 @@ def gen_data(samples):
         # Write winner and loser
         if f1_name == winner_name:
             with open(f1, "a+") as f:
-                f.write("\nWIN")
+                f.write("!\nWIN")
             with open(f2, "a+") as f:
-                f.write("\nLOSS")
+                f.write("!\nLOSS")
         else:
             with open(f1, "a+") as f:
-                f.write("\nLOSS")
+                f.write("!\nLOSS")
             with open(f2, "a+") as f:
-                f.write("\nWIN")
+                f.write("!\nWIN")
 
 def discount_rewards(rewards):
-    disc_rewards = np.zeros_like(rewards)
     running_reward = 0
     for i in reversed(range(len(rewards))):
         running_reward = running_reward * gamma + rewards[i]
-        disc_rewards = running_reward
-    return disc_rewards
+        rewards[i] = running_reward
 
-    print(data_file)
 # Get rid of parts left from the last round
 # because the last round doesn't finish writing
 def clean_data_end(data_file):
