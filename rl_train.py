@@ -39,7 +39,7 @@ def main():
             nn = NeuralNet(cached_model=args.cache, seed=args.seed, processor="GPU")
 
         x_data, rewards = read_data()
-        print(x_data.shape, rewards.shape)
+        rewards = stack_rewards(rewards)
 
         data_size = len(x_data)
         x_train, rewards_train = x_data[:int(0.85 * data_size)], rewards[:int(0.85 * data_size)]
@@ -49,10 +49,8 @@ def main():
 
         # randomly permute the data
         permutation = np.random.permutation(training_data_size)
-        #x_train = np.asarray(x_train)
-        #rewards_train = np.asarray(rewards_train).reshape([-1, 1])
         x_train, rewards_train = x_train[permutation], rewards_train[permutation]
-
+        print(x_validation.shape, rewards_validation.shape)
         print("Initial, cross validation loss: {}".format(nn.compute_loss(x_validation, rewards_validation)))
 
         curves = []
@@ -67,7 +65,6 @@ def main():
                 print("Step: {}, cross validation loss: {}, training_loss: {}".format(s, validation_loss, training_loss))
                 curves.append((s, training_loss, validation_loss))
 
-        nn._session.close()
         cf = pd.DataFrame(curves, columns=['step', 'training_loss', 'cv_loss'])
         fig = cf.plot(x='step', y=['training_loss', 'cv_loss']).get_figure()
 
@@ -76,11 +73,17 @@ def main():
         model_path = os.path.join(current_directory, os.path.pardir, "models", args.model_name + ".ckpt")
         print("Training epoch finished, serializing model to {}".format(model_path))
         nn.save(model_path)
+        nn._session.close()
         print("Model serialized")
+
 
         curve_path = os.path.join(current_directory, os.path.pardir, "models", args.model_name + "_training_plot.png")
         fig.savefig(curve_path)
     del_sp_data()
+
+def stack_rewards(rewards):
+    stacked_rewards = rewards
+    return np.asarray([[r] * PLANET_MAX_NUM for r in rewards])
 
 def del_sp_data():
     dir_name = "rlData/"

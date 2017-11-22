@@ -58,20 +58,21 @@ class NeuralNet(object):
                 third_layer = tf.contrib.layers.fully_connected(second_layer, self.THIRD_LAYER_SIZE)
                 fourth_layer = tf.contrib.layers.fully_connected(third_layer, self.FOURTH_LAYER_SIZE)
 
-                fifth_layer = tf.contrib.layers.fully_connected(fourth_layer, 1, activation_fn=None)
+                fifth_layer = tf.contrib.layers.fully_connected(fourth_layer, 1, activation_fn=tf.nn.sigmoid)
 
                 # Group the planets back in frames.
-                logits = tf.reshape(fifth_layer, [-1, PLANET_MAX_NUM])
+                logits = tf.reshape(fifth_layer, [-1, PLANET_MAX_NUM], name="logits")
 
-                self._reward_holder = tf.placeholder(tf.float32, [None], name="reward_holder")
+                self._reward_holder = tf.placeholder(tf.float32, [None, PLANET_MAX_NUM], name="reward_holder")
                 #action_holder = tf.placeholder(tf.float32, [None, PLANET_MAX_NUM], name="action_holder")
 
                 #responsible_outputs = tf.gather(tf.reshape(logits, [-1]), tf.range(0, tf.shape(logits)[0] * tf.shape(logits)[1]) + action_holder)
 
                 self._prediction_normalized = tf.nn.softmax(logits)
-
                 # self._loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits=logits, labels=self._target_distribution))
                 self._loss = -tf.reduce_mean(tf.log(logits) * self._reward_holder)
+                self._debug_stat = tf.log(logits)[:2]
+                self._debug_stat2 = self._reward_holder[:2]
 
                 self._optimizer = tf.train.AdamOptimizer(learning_rate=1e-4).minimize(self._loss)
                 self._saver = tf.train.Saver()
@@ -94,6 +95,11 @@ class NeuralNet(object):
                                                self._reward_holder: reward})
         return loss
 
+    def debug_stat(self, input_data, rewards):
+        return self._session.run([self._debug_stat, self._debug_stat2],
+                                 feed_dict={self._features: normalize_input(input_data),
+                                            self._reward_holder: rewards})
+
     def predict(self, input_data):
         """
         Given data from 1 frame, predict where the ships should be sent.
@@ -110,7 +116,7 @@ class NeuralNet(object):
         Compute loss on the input data without running any training.
 
         :param input_data: numpy array of shape (number of frames, PLANET_MAX_NUM, PER_PLANET_FEATURES)
-        :param expected_output_data: numpy array of shape (number of frames, PLANET_MAX_NUM)
+        :param expected_output_data: numpy array of shape (number of frames, 1)
         :return: training loss on the input data
         """
         return self._session.run(self._loss,
