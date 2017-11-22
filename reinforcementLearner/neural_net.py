@@ -105,7 +105,7 @@ class NeuralNet(object):
         return self._session.run(self._prediction_normalized,
                                  feed_dict={self._features: normalize_input(np.array([input_data]))})[0]
 
-    def compute_loss(self, input_data, expected_output_data):
+    def compute_loss(self, input_data, rewards):
         """
         Compute loss on the input data without running any training.
 
@@ -115,7 +115,7 @@ class NeuralNet(object):
         """
         return self._session.run(self._loss,
                                  feed_dict={self._features: normalize_input(input_data),
-                                            self._target_distribution: expected_output_data})
+                                            self._reward_holder: rewards})
 
     def save(self, path):
         """

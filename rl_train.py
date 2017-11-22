@@ -3,9 +3,10 @@ import argparse
 import numpy as np
 import pandas as pd
 from reinforcementLearner.parsing import parse
-from reinforcementLearner.common import player_0_name, player_1_name, gamma
+from reinforcementLearner.common import player_0_name, player_1_name, gamma, PLANET_MAX_NUM, PER_PLANET_FEATURES
 from subprocess import Popen, PIPE
 import os
+import sys
 
 from reinforcementLearner.neural_net import NeuralNet
 
@@ -16,38 +17,78 @@ def main():
     parser.add_argument("--steps", type=int, help="Number of steps in the training", default=100)
     parser.add_argument("--cache", help="Location of the model we should continue to train")
     parser.add_argument("--games_limit", type=int, help="Train on up to games_limit games", default=1000)
+    parser.add_argument("--sp_batch_size", type=int, help="How many self play games to generate per round of training", default=20)
     parser.add_argument("--seed", type=int, help="Random seed to make the training deterministic")
+    parser.add_argument("--cpu", type=bool, help="Use the CPU for training or not", default=False)
 
     args = parser.parse_args()
 
     if args.seed is not None:
         np.random.seed(args.seed)
 
-    #gen_data(2)
+    for i in range(0, args.games_limit, args.sp_batch_size):
+        print("Cleaning old data...")
+        del_sp_data()
 
-    read_data()
+        print("Generating new self play data...")
+        gen_data(args.sp_batch_size, debug=True)
 
-    # for s in range(args.steps):
-    #     start = (s * args.minibatch_size) % training_data_size
-    #     end = start + args.minibatch_size
-    #     training_loss = nn.fit(training_input[start:end], training_output[start:end])
-    #     if s % 25 == 0 or s == args.steps - 1:
-    #         validation_loss = nn.compute_loss(validation_input, validation_output)
-    #         print("Step: {}, cross validation loss: {}, training_loss: {}".format(s, validation_loss, training_loss))
-    #         curves.append((s, training_loss, validation_loss))
-    #
-    # cf = pd.DataFrame(curves, columns=['step', 'training_loss', 'cv_loss'])
-    # fig = cf.plot(x='step', y=['training_loss', 'cv_loss']).get_figure()
-    #
-    # # Save the trained model, so it can be used by the bot
-    # current_directory = os.path.dirname(os.path.abspath(__file__))
-    # model_path = os.path.join(current_directory, os.path.pardir, "models", args.model_name + ".ckpt")
-    # print("Training finished, serializing model to {}".format(model_path))
-    # nn.save(model_path)
-    # print("Model serialized")
-    #
-    # curve_path = os.path.join(current_directory, os.path.pardir, "models", args.model_name + "_training_plot.png")
-    # fig.savefig(curve_path)
+        if args.cpu:
+            nn = NeuralNet(cached_model=args.cache, seed=args.seed, processor="CPU")
+        else:
+            nn = NeuralNet(cached_model=args.cache, seed=args.seed, processor="GPU")
+
+        x_data, rewards = read_data()
+        print(x_data.shape, rewards.shape)
+
+        data_size = len(x_data)
+        x_train, rewards_train = x_data[:int(0.85 * data_size)], rewards[:int(0.85 * data_size)]
+        x_validation, rewards_validation = x_data[int(0.85 * data_size):], rewards[int(0.85 * data_size):]
+
+        training_data_size = len(x_train)
+
+        # randomly permute the data
+        permutation = np.random.permutation(training_data_size)
+        #x_train = np.asarray(x_train)
+        #rewards_train = np.asarray(rewards_train).reshape([-1, 1])
+        x_train, rewards_train = x_train[permutation], rewards_train[permutation]
+
+        print("Initial, cross validation loss: {}".format(nn.compute_loss(x_validation, rewards_validation)))
+
+        curves = []
+
+        print("Begin training epoch")
+        for s in range(args.steps):
+            start = (s * args.minibatch_size) % training_data_size
+            end = start + args.minibatch_size
+            training_loss = nn.fit(x_train[start:end], rewards_train[start:end])
+            if s % 25 == 0 or s == args.steps - 1:
+                validation_loss = nn.compute_loss(x_validation, rewards_validation)
+                print("Step: {}, cross validation loss: {}, training_loss: {}".format(s, validation_loss, training_loss))
+                curves.append((s, training_loss, validation_loss))
+
+        nn._session.close()
+        cf = pd.DataFrame(curves, columns=['step', 'training_loss', 'cv_loss'])
+        fig = cf.plot(x='step', y=['training_loss', 'cv_loss']).get_figure()
+
+        # Save the trained model, so it can be used by the bot
+        current_directory = os.path.dirname(os.path.abspath(__file__))
+        model_path = os.path.join(current_directory, os.path.pardir, "models", args.model_name + ".ckpt")
+        print("Training epoch finished, serializing model to {}".format(model_path))
+        nn.save(model_path)
+        print("Model serialized")
+
+        curve_path = os.path.join(current_directory, os.path.pardir, "models", args.model_name + "_training_plot.png")
+        fig.savefig(curve_path)
+    del_sp_data()
+
+def del_sp_data():
+    dir_name = "rlData/"
+    dir_list = os.listdir(dir_name)
+
+    for item in dir_list:
+        if item.endswith(".data"):
+            os.remove(os.path.join(dir_name, item))
 
 def read_data():
     x_data = []
@@ -70,6 +111,8 @@ def read_data():
                         val_line = line.split(",")
                         x_turn[-1].append([float(val) for val in val_line[:-1]])
                         x_turn[-1][-1].append(float(val_line[-1] == "True"))
+                    for i in range(PLANET_MAX_NUM - n_planets):
+                        x_turn[-1].append([0] * PER_PLANET_FEATURES)
                     if f.readline()[:-1] == "-!":
                         done = True
                         if f.readline() == "WIN":
@@ -78,10 +121,12 @@ def read_data():
                             rewards_turn[-1] = -1
                 discount_rewards(rewards_turn)
 
-            x_data.extend(x_turn)
-            rewards.extend(rewards_turn)
+                x_data.extend(x_turn)
+                rewards.extend(rewards_turn)
 
-def gen_data(samples):
+    return np.asarray(x_data), np.asarray(rewards)
+
+def gen_data(samples, debug=False):
     # Min of 2 samples
     if samples == 1:
         samples = 2
@@ -94,6 +139,9 @@ def gen_data(samples):
         process = Popen(command, stdout=PIPE)
         out, _ = process.communicate()
         out = out.decode("utf-8")
+
+        if debug:
+            print(out)
 
         # Winner is the index of the player who won
         winner_name = player_0_name

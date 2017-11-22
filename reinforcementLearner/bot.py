@@ -9,7 +9,6 @@ from reinforcementLearner.neural_net import NeuralNet
 
 class Bot:
     def __init__(self, location, name, processor="GPU"):
-        #print("FJTYFYITFTKYFKYUT")
         current_directory = os.path.dirname(os.path.abspath(__file__))
         model_location = os.path.join(current_directory, os.path.pardir, "models", location)
         self._name = name
