@@ -20,6 +20,9 @@ FEATURE_NAMES = [
 # Number of initial features per planet we have
 PER_PLANET_FEATURES = len(FEATURE_NAMES)
 
+player_0_name = "Ejmejm"
+player_1_name = "EjmejmCPU"
+
 def distance2(x1, y1, x2, y2):
     return (x1 - x2) ** 2 + (y1 - y2) ** 2
 

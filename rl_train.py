@@ -3,7 +3,9 @@ import argparse
 import numpy as np
 import pandas as pd
 from reinforcementLearner.parsing import parse
+from reinforcementLearner.common import player_0_name, player_1_name
 from subprocess import Popen, PIPE
+import os
 
 from reinforcementLearner.neural_net import NeuralNet
 
@@ -25,7 +27,41 @@ def main():
 
     ep_history = []
 
-    run_command(["./halite", "-d", "160 160", "-t", "python3 MyBot.py", "python3 MyBotCPU.py"])
+    command = ["./halite", "-d", "160 160", "-t", "python3 MyBot.py", "python3 MyBotCPU.py"]
+
+    process = Popen(command, stdout=PIPE)
+    out, _ = process.communicate()
+    out = out.decode("utf-8")
+
+    print(out)
+
+    # Winner is the index of the player who won
+    winner_name = player_0_name
+    if out.index("#2 ") < out.index("#1 "):
+        winner_name = player_1_name
+
+    # Find the file of the winner
+    dir_files = sorted(os.listdir("rlData"), reverse=True)
+    with open("rlData/" + dir_files[0], "r") as f:
+        f1_name = f.readline()[:-1]
+
+    # Write winner and loser
+    print("f1_name:", f1_name)
+    print("winner_name:", winner_name)
+    if f1_name == winner_name:
+        print("SAMEEE")
+        with open("rlData/" + dir_files[0], "a+") as f:
+            f.write("\nWIN")
+        with open("rlData/" + dir_files[1], "a+") as f:
+            f.write("\nLOSS")
+    else:
+        with open("rlData/" + dir_files[0], "a+") as f:
+            f.write("\nLOSS")
+        with open("rlData/" + dir_files[1], "a+") as f:
+            f.write("\nWIN")
+
+
+
 
     # process = Popen(["../halite", "-d", "160 160", "-t", "python3 MyBot.py", "python3 MyBotCPU.py"], stdout=PIPE, stderr=PIPE)
     #
@@ -38,6 +74,7 @@ def main():
     # print("Finished")
 
 # https://www.endpoint.com/blog/2015/01/28/getting-realtime-output-using-python
+
 def run_command(command):
     process = Popen(command, stdout=PIPE)
     while True:

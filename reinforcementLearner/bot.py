@@ -37,17 +37,25 @@ class Bot:
             except ValueError:
                 continue
         f = open("rlData/gameData_"+str(new_index)+".data", "w")
+
+        first_loop = True
         while True:
             # Update the game map.
             game_map = game.update_map()
             start_time = time.time()
 
+            if first_loop:
+                f.write(self._name + "\n")
+                f.write(str(len(game_map.all_planets())) + "\n")
+                first_loop = False
+
             # Produce features for each planet.
             features = self.produce_features(game_map)
             for planet in features:
-                for element in planet:
-                    f.write(str(element) + ",")
-                f.write("\n")
+                if planet != [0] * PER_PLANET_FEATURES:
+                    for element in planet:
+                        f.write(str(element) + ",")
+                    f.write("\n")
             f.write("-\n")
             #game_hist.append(features)
 
