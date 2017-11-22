@@ -41,23 +41,27 @@ def main():
         winner_name = player_1_name
 
     # Find the file of the winner
-    dir_files = sorted(os.listdir("rlData"), reverse=True)
-    with open("rlData/" + dir_files[0], "r") as f:
-        f1_name = f.readline()[:-1]
+    dir_indices = sorted([int(end[9:-5]) for end in os.listdir("rlData") if end[:9] == "gameData_" and end[-5:] == ".data"], reverse=True)
+    f1 = "rlData/gameData_" + str(dir_indices[0]) + ".data"
+    f2 = "rlData/gameData_" + str(dir_indices[1]) + ".data"
 
+    clean_data_end(f1)
+    clean_data_end(f2)
+
+    with open(f1, "r") as f:
+        f1_name = f.readline()[:-1]
     # Write winner and loser
     print("f1_name:", f1_name)
     print("winner_name:", winner_name)
     if f1_name == winner_name:
-        print("SAMEEE")
-        with open("rlData/" + dir_files[0], "a+") as f:
+        with open(f1, "a+") as f:
             f.write("\nWIN")
-        with open("rlData/" + dir_files[1], "a+") as f:
+        with open(f2, "a+") as f:
             f.write("\nLOSS")
     else:
-        with open("rlData/" + dir_files[0], "a+") as f:
+        with open(f1, "a+") as f:
             f.write("\nLOSS")
-        with open("rlData/" + dir_files[1], "a+") as f:
+        with open(f2, "a+") as f:
             f.write("\nWIN")
 
 
@@ -74,6 +78,20 @@ def main():
     # print("Finished")
 
 # https://www.endpoint.com/blog/2015/01/28/getting-realtime-output-using-python
+
+# Get rid of parts left from the last round
+# because the last round doesn't finish writing
+def clean_data_end(data_file):
+    data = ""
+    with open(data_file, "r") as f:
+        data = f.read()
+
+    print(data_file)
+    del_index = data.rfind("-\n")
+    data = data[:del_index+1]
+
+    with open(data_file, "w") as f:
+        f.write(data)
 
 def run_command(command):
     process = Popen(command, stdout=PIPE)

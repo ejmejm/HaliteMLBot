@@ -51,13 +51,14 @@ class Bot:
 
             # Produce features for each planet.
             features = self.produce_features(game_map)
+
+            # Write features to file
             for planet in features:
                 if planet != [0] * PER_PLANET_FEATURES:
                     for element in planet:
                         f.write(str(element) + ",")
                     f.write("\n")
             f.write("-\n")
-            #game_hist.append(features)
 
             # Find predictions which planets we should send ships to.
             predictions = self._neural_net.predict(features)
