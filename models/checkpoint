@@ -1,2 +1,0 @@
-model_checkpoint_path: "/home/ejmejm/MLProjects/MLHalite/reinforcementLearner/../models/rl_training.ckpt"
-all_model_checkpoint_paths: "/home/ejmejm/MLProjects/MLHalite/reinforcementLearner/../models/rl_training.ckpt"

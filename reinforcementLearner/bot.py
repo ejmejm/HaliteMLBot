@@ -9,8 +9,11 @@ from reinforcementLearner.neural_net import NeuralNet
 
 class Bot:
     def __init__(self, location, name, processor="GPU"):
-        current_directory = os.path.dirname(os.path.abspath(__file__))
-        model_location = os.path.join(current_directory, os.path.pardir, "models", location)
+        if location is None:
+            model_location = None
+        else:
+            current_directory = os.path.dirname(os.path.abspath(__file__))
+            model_location = os.path.join(current_directory, os.path.pardir, "models", location)
         self._name = name
         self._neural_net = NeuralNet(cached_model=model_location, processor=processor)
 

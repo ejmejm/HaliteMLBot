@@ -14,7 +14,7 @@ def main():
     parser = argparse.ArgumentParser(description="Halite II training")
     parser.add_argument("--model_name", help="Name of the model")
     parser.add_argument("--minibatch_size", type=int, help="Size of the minibatch", default=100)
-    parser.add_argument("--steps", type=int, help="Number of steps in the training", default=100)
+    parser.add_argument("--steps", type=int, help="Number of steps in the training", default=500)
     parser.add_argument("--cache", help="Location of the model we should continue to train")
     parser.add_argument("--games_limit", type=int, help="Train on up to games_limit games", default=1000)
     parser.add_argument("--sp_batch_size", type=int, help="How many self play games to generate per round of training", default=20)
@@ -31,9 +31,9 @@ def main():
         del_sp_data()
 
         print("Generating new self play data...")
-        gen_data(args.sp_batch_size, debug=True)
+        gen_data(args.sp_batch_size, cache=args.cache, debug=False)
 
-        if args.cpu:
+        if not args.cpu:
             nn = NeuralNet(cached_model=args.cache, seed=args.seed, processor="CPU")
         else:
             nn = NeuralNet(cached_model=args.cache, seed=args.seed, processor="GPU")
@@ -50,7 +50,6 @@ def main():
         # randomly permute the data
         permutation = np.random.permutation(training_data_size)
         x_train, rewards_train = x_train[permutation], rewards_train[permutation]
-        print(x_validation.shape, rewards_validation.shape)
         print("Initial, cross validation loss: {}".format(nn.compute_loss(x_validation, rewards_validation)))
 
         curves = []
@@ -70,14 +69,15 @@ def main():
 
         # Save the trained model, so it can be used by the bot
         current_directory = os.path.dirname(os.path.abspath(__file__))
-        model_path = os.path.join(current_directory, os.path.pardir, "models", args.model_name + ".ckpt")
+        model_path = os.path.join(current_directory, "models", args.model_name + ".ckpt")
         print("Training epoch finished, serializing model to {}".format(model_path))
         nn.save(model_path)
+        args.cache = model_path
         nn._session.close()
         print("Model serialized")
 
 
-        curve_path = os.path.join(current_directory, os.path.pardir, "models", args.model_name + "_training_plot.png")
+        curve_path = os.path.join(current_directory, "models", args.model_name + "_training_plot.png")
         fig.savefig(curve_path)
     del_sp_data()
 
@@ -129,7 +129,7 @@ def read_data():
 
     return np.asarray(x_data), np.asarray(rewards)
 
-def gen_data(samples, debug=False):
+def gen_data(samples, cache=None, debug=False):
     # Min of 2 samples
     if samples == 1:
         samples = 2
@@ -137,7 +137,7 @@ def gen_data(samples, debug=False):
     for i in range(samples//2):
         print("Generating samples {} and {}...".format(i*2+1, i*2+2))
 
-        command = ["./halite", "-d", "160 160", "-t", "python3 MyBot.py", "python3 MyBotCPU.py"]
+        command = ["./halite", "-d", "160 160", "-t", "python3 MyBot.py " + str(cache), "python3 MyBotCPU.py " + str(cache)]
 
         process = Popen(command, stdout=PIPE)
         out, _ = process.communicate()
