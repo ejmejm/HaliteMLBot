@@ -3,7 +3,7 @@ import argparse
 import numpy as np
 import pandas as pd
 from reinforcementLearner.parsing import parse
-from reinforcementLearner.common import player_0_name, player_1_name
+from reinforcementLearner.common import player_0_name, player_1_name, gamma
 from subprocess import Popen, PIPE
 import os
 
@@ -25,60 +25,59 @@ def main():
 
     #neural_net = NeuralNet(cached_model=args.cache)
 
-    ep_history = []
+    gen_data(10)
 
-    command = ["./halite", "-d", "160 160", "-t", "python3 MyBot.py", "python3 MyBotCPU.py"]
+def gen_data(samples):
 
-    process = Popen(command, stdout=PIPE)
-    out, _ = process.communicate()
-    out = out.decode("utf-8")
+    # Min of 2 samples
+    if samples == 1:
+        samples = 2
 
-    print(out)
+    for i in range(samples//2):
+        print("Generating samples {} and {}...".format(i*2+1, i*2+2))
 
-    # Winner is the index of the player who won
-    winner_name = player_0_name
-    if out.index("#2 ") < out.index("#1 "):
-        winner_name = player_1_name
+        command = ["./halite", "-d", "160 160", "-t", "python3 MyBot.py", "python3 MyBotCPU.py"]
 
-    # Find the file of the winner
-    dir_indices = sorted([int(end[9:-5]) for end in os.listdir("rlData") if end[:9] == "gameData_" and end[-5:] == ".data"], reverse=True)
-    f1 = "rlData/gameData_" + str(dir_indices[0]) + ".data"
-    f2 = "rlData/gameData_" + str(dir_indices[1]) + ".data"
+        process = Popen(command, stdout=PIPE)
+        out, _ = process.communicate()
+        out = out.decode("utf-8")
 
-    clean_data_end(f1)
-    clean_data_end(f2)
+        # Winner is the index of the player who won
+        winner_name = player_0_name
+        if out.index("#2 ") < out.index("#1 "):
+            winner_name = player_1_name
 
-    with open(f1, "r") as f:
-        f1_name = f.readline()[:-1]
-    # Write winner and loser
-    print("f1_name:", f1_name)
-    print("winner_name:", winner_name)
-    if f1_name == winner_name:
-        with open(f1, "a+") as f:
-            f.write("\nWIN")
-        with open(f2, "a+") as f:
-            f.write("\nLOSS")
-    else:
-        with open(f1, "a+") as f:
-            f.write("\nLOSS")
-        with open(f2, "a+") as f:
-            f.write("\nWIN")
+        # Find the file of the winner
+        dir_indices = sorted([int(end[9:-5]) for end in os.listdir("rlData") if end[:9] == "gameData_" and end[-5:] == ".data"], reverse=True)
+        f1 = "rlData/gameData_" + str(dir_indices[0]) + ".data"
+        f2 = "rlData/gameData_" + str(dir_indices[1]) + ".data"
 
+        clean_data_end(f1)
+        clean_data_end(f2)
 
+        with open(f1, "r") as f:
+            f1_name = f.readline()[:-1]
+        # Write winner and loser
+        if f1_name == winner_name:
+            with open(f1, "a+") as f:
+                f.write("\nWIN")
+            with open(f2, "a+") as f:
+                f.write("\nLOSS")
+        else:
+            with open(f1, "a+") as f:
+                f.write("\nLOSS")
+            with open(f2, "a+") as f:
+                f.write("\nWIN")
 
+def discount_rewards(rewards):
+    disc_rewards = np.zeros_like(rewards)
+    running_reward = 0
+    for i in reversed(range(len(rewards))):
+        running_reward = running_reward * gamma + rewards[i]
+        disc_rewards = running_reward
+    return disc_rewards
 
-    # process = Popen(["../halite", "-d", "160 160", "-t", "python3 MyBot.py", "python3 MyBotCPU.py"], stdout=PIPE, stderr=PIPE)
-    #
-    # output, err = process.communicate()
-    #
-    # print("OUTPUT: {}".format(output))
-    # print()
-    # print("ERROR: {}".format(err))
-    # print()
-    # print("Finished")
-
-# https://www.endpoint.com/blog/2015/01/28/getting-realtime-output-using-python
-
+    print(data_file)
 # Get rid of parts left from the last round
 # because the last round doesn't finish writing
 def clean_data_end(data_file):
@@ -86,49 +85,11 @@ def clean_data_end(data_file):
     with open(data_file, "r") as f:
         data = f.read()
 
-    print(data_file)
     del_index = data.rfind("-\n")
     data = data[:del_index+1]
 
     with open(data_file, "w") as f:
         f.write(data)
-
-def run_command(command):
-    process = Popen(command, stdout=PIPE)
-    while True:
-        output = process.stdout.readline()
-        if output == '' and process.poll() is not None:
-            break
-        if output:
-            print(output.strip())
-    rc = process.poll()
-    return rc
-
-def playthrough(neural_net):
-
-    # Initialize the game.
-    game = hlt.Game(self._name)
-
-    while True:
-        # Update the game map.
-        game_map = game.update_map()
-        print(type(game_map))
-        start_time = time.time()
-
-        # Produce features for each planet.
-        features = self.produce_features(game_map)
-
-        # Find predictions which planets we should send ships to.
-        predictions = neural_net.predict(features)
-
-        # Use simple greedy algorithm to assign closest ships to each planet according to predictions.
-        ships_to_planets_assignment = self.produce_ships_to_planets_assignment(game_map, predictions)
-
-        # Produce halite instruction for each ship.
-        instructions = self.produce_instructions(game_map, ships_to_planets_assignment, start_time)
-
-        # Send the command.
-        game.send_command_queue(instructions)
 
 if __name__ == "__main__":
     main()
