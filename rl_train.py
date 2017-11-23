@@ -38,19 +38,19 @@ def main():
         else:
             nn = NeuralNet(cached_model=args.cache, seed=args.seed, processor="GPU")
 
-        x_data, rewards = read_data()
-        rewards = stack_rewards(rewards)
+        x_data, actions, rewards = read_data()
+        #rewards = stack_rewards(rewards)
 
         data_size = len(x_data)
-        x_train, rewards_train = x_data[:int(0.85 * data_size)], rewards[:int(0.85 * data_size)]
-        x_validation, rewards_validation = x_data[int(0.85 * data_size):], rewards[int(0.85 * data_size):]
+        x_train, actions_train, rewards_train = x_data[:int(0.85 * data_size)], action[:int(0.85 * data_size)], rewards[:int(0.85 * data_size)]
+        x_validation, actions_validation, rewards_validation = x_data[int(0.85 * data_size):], actions[int(0.85 * data_size):], rewards[int(0.85 * data_size):]
 
         training_data_size = len(x_train)
 
         # randomly permute the data
         permutation = np.random.permutation(training_data_size)
-        x_train, rewards_train = x_train[permutation], rewards_train[permutation]
-        print("Initial, cross validation loss: {}".format(nn.compute_loss(x_validation, rewards_validation)))
+        x_train, actions_train, rewards_train = x_train[permutation], actions_train[permutation], rewards_train[permutation]
+        print("Initial, cross validation loss: {}".format(nn.compute_loss(x_validation, actions_validation, rewards_validation)))
 
         curves = []
 
@@ -58,11 +58,11 @@ def main():
         for s in range(args.steps):
             start = (s * args.minibatch_size) % training_data_size
             end = start + args.minibatch_size
-            training_loss = nn.fit(x_train[start:end], rewards_train[start:end])
+            training_loss = nn.fit(x_train[start:end], actions[start:end], rewards_train[start:end])
             if s % 25 == 0 or s == args.steps - 1:
-                validation_loss = nn.compute_loss(x_validation, rewards_validation)
+                validation_loss = nn.compute_loss(x_validation, actions_validation, rewards_validation)
                 print("Step: {}, cross validation loss: {}, training_loss: {}".format(s, validation_loss, training_loss))
-                print(nn.debug_stat(x_validation, rewards_validation))
+                # print(nn.debug_stat(x_validation, actions_validation, rewards_validation))
                 curves.append((s, training_loss, validation_loss))
 
         cf = pd.DataFrame(curves, columns=['step', 'training_loss', 'cv_loss'])
@@ -96,6 +96,7 @@ def del_sp_data():
 
 def read_data():
     x_data = []
+    actions = []
     rewards = []
 
     for file in os.listdir("rlData/"):
@@ -104,31 +105,38 @@ def read_data():
                 f.readline()
                 n_planets = int(f.readline())
                 x_turn = []
+                actions_turn = []
                 rewards_turn = []
 
                 done = False
                 while not done:
                     x_turn.append([])
                     rewards_turn.append(0)
+                    actions_turn.append(int(f.readline()[1:-1]))
                     for i in range(n_planets):
                         line = f.readline()[:-2]
                         val_line = line.split(",")
                         x_turn[-1].append([float(val) for val in val_line[:-1]])
                         x_turn[-1][-1].append(float(val_line[-1] == "True"))
+                        # Add reward for each ship produced
+                        # TODO: Check how changing ownership affects planet production
+                        # if len(x_turn >= 2) and x_turn[-1][3] >= 0 and x_turn[-1][3] < x_turn[-2][3]: # If player produces a ship
+                        #     rewards_turn[-1] += 0.01
                     for i in range(PLANET_MAX_NUM - n_planets):
                         x_turn[-1].append([0] * PER_PLANET_FEATURES)
                     if f.readline()[:-1] == "-!":
                         done = True
                         if f.readline() == "WIN":
-                            rewards_turn[-1] = 1
+                            rewards_turn[-1] += 1
                         else:
-                            rewards_turn[-1] = -1
+                            rewards_turn[-1] -= -1
                 discount_rewards(rewards_turn)
 
                 x_data.extend(x_turn)
+                actions.extend(actions_turn)
                 rewards.extend(rewards_turn)
 
-    return np.asarray(x_data), np.asarray(rewards)
+    return np.asarray(x_data), np.asarray(actions), np.asarray(rewards)
 
 def gen_data(samples, cache=None, debug=False):
     # Min of 2 samples

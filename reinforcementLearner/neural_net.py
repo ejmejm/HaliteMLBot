@@ -54,25 +54,31 @@ class NeuralNet(object):
                 flattened_frames = tf.reshape(self._features, [-1, PER_PLANET_FEATURES])
 
                 first_layer = tf.contrib.layers.fully_connected(flattened_frames, self.FIRST_LAYER_SIZE)
-                first_layer = tf.contrib.layers.layer_norm(first_layer)
+                # first_layer = tf.contrib.layers.layer_norm(first_layer)
                 second_layer = tf.contrib.layers.fully_connected(first_layer, self.SECOND_LAYER_SIZE)
                 third_layer = tf.contrib.layers.fully_connected(second_layer, self.THIRD_LAYER_SIZE)
-                third_layer = tf.contrib.layers.layer_norm(third_layer)
+                # third_layer = tf.contrib.layers.layer_norm(third_layer)
                 fourth_layer = tf.contrib.layers.fully_connected(third_layer, self.FOURTH_LAYER_SIZE)
 
-                fifth_layer = tf.contrib.layers.fully_connected(fourth_layer, 1, activation_fn=tf.nn.sigmoid)
+                fifth_layer = tf.contrib.layers.fully_connected(fourth_layer, 1, activation_fn=tf.nn.relu)
 
                 # Group the planets back in frames.
                 logits = tf.reshape(fifth_layer, [-1, PLANET_MAX_NUM], name="logits")
 
-                self._reward_holder = tf.placeholder(tf.float32, [None, PLANET_MAX_NUM], name="reward_holder")
+                self._reward_holder = tf.placeholder(tf.float32, [None], name="reward_holder")
+                self._action_holder = tf.placeholder(tf.int32, [None], name="reward_holder")
                 #action_holder = tf.placeholder(tf.float32, [None, PLANET_MAX_NUM], name="action_holder")
 
                 #responsible_outputs = tf.gather(tf.reshape(logits, [-1]), tf.range(0, tf.shape(logits)[0] * tf.shape(logits)[1]) + action_holder)
 
                 self._prediction_normalized = tf.nn.softmax(logits)
                 # self._loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits=logits, labels=self._target_distribution))
-                self._loss = -tf.reduce_mean(tf.log(logits) * self._reward_holder)
+
+                responsible_outputs = tf.gather(tf.reshape(self._prediction_normalized, [-1]), \
+                                      tf.range(0, tf.shape(self._prediction_normalized)[0] * \
+                                      tf.shape(self._prediction_normalized)[1], PLANET_MAX_NUM) + self._action_holder)
+
+                self._loss = -tf.reduce_mean(tf.log(responsible_outputs) * self._reward_holder)
                 self._debug_stat = fifth_layer
 
                 self._optimizer = tf.train.AdamOptimizer(learning_rate=1e-4).minimize(self._loss)
@@ -83,7 +89,7 @@ class NeuralNet(object):
                 else:
                     self._saver.restore(self._session, cached_model)
 
-    def fit(self, input_data, reward):
+    def fit(self, input_data, actions, reward):
         """
         Perform one step of training on the training data.
 
@@ -93,12 +99,14 @@ class NeuralNet(object):
         """
         loss, _ = self._session.run([self._loss, self._optimizer],
                                     feed_dict={self._features: normalize_input(input_data),
+                                               self._action_holder: actions,
                                                self._reward_holder: reward})
         return loss
 
-    def debug_stat(self, input_data, rewards):
+    def debug_stat(self, input_data, actions, rewards):
         return self._session.run([self._debug_stat],
                                  feed_dict={self._features: normalize_input(input_data),
+                                            self._action_holder: actions,
                                             self._reward_holder: rewards})
 
     def predict(self, input_data):
@@ -112,7 +120,7 @@ class NeuralNet(object):
         return self._session.run(self._prediction_normalized,
                                  feed_dict={self._features: normalize_input(np.array([input_data]))})[0]
 
-    def compute_loss(self, input_data, rewards):
+    def compute_loss(self, input_data, actions, rewards):
         """
         Compute loss on the input data without running any training.
 
@@ -122,6 +130,7 @@ class NeuralNet(object):
         """
         return self._session.run(self._loss,
                                  feed_dict={self._features: normalize_input(input_data),
+                                            self._action_holder: actions,
                                             self._reward_holder: rewards})
 
     def save(self, path):

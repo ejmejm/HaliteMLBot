@@ -57,17 +57,21 @@ class Bot:
 
             if random.random() < 0.1:
                 predictions = []
+                pred_sum = 0.
                 for i in range(PLANET_MAX_NUM):
-                    predictions.append(random.random)
-                predictions = [f/sum(predictions) for f in predictions]
+                    num = random.random()
+                    predictions.append(num)
+                    pred_sum += num
+                predictions = [f/pred_sum for f in predictions]
+                # print(predictions)
             else:
                 # Find predictions which planets we should send ships to.
                 predictions = self._neural_net.predict(features)
 
             # Write features and action to file
+            f.write("a" + str(np.argmax(predictions)) + "\n")
             for planet in features:
                 if planet != [0] * PER_PLANET_FEATURES:
-                    f.write("a" + str(predictions.index(max(predictions))) + "\n")
                     for element in planet:
                         f.write(str(element) + ",")
                     f.write("\n")
