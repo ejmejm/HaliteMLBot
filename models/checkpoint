@@ -1,0 +1,2 @@
+model_checkpoint_path: "/home/ejmejm/MLProjects/HaliteMLBot/models/rl_training_test.ckpt"
+all_model_checkpoint_paths: "/home/ejmejm/MLProjects/HaliteMLBot/models/rl_training_test.ckpt"

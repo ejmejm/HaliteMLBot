@@ -2,6 +2,7 @@ import heapq
 import numpy as np
 import os
 import time
+import random
 
 import hlt
 from reinforcementLearner.common import *
@@ -62,8 +63,14 @@ class Bot:
                     f.write("\n")
             f.write("-\n")
 
-            # Find predictions which planets we should send ships to.
-            predictions = self._neural_net.predict(features)
+            if random.random() < 0.1:
+                predictions = []
+                for i in range(PLANET_MAX_NUM):
+                    predictions.append(random.random)
+                predictions = [f/sum(predictions) for f in predictions]
+            else:
+                # Find predictions which planets we should send ships to.
+                predictions = self._neural_net.predict(features)
 
             # Use simple greedy algorithm to assign closest ships to each planet according to predictions.
             ships_to_planets_assignment = self.produce_ships_to_planets_assignment(game_map, predictions)

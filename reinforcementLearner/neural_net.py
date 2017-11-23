@@ -54,8 +54,10 @@ class NeuralNet(object):
                 flattened_frames = tf.reshape(self._features, [-1, PER_PLANET_FEATURES])
 
                 first_layer = tf.contrib.layers.fully_connected(flattened_frames, self.FIRST_LAYER_SIZE)
+                first_layer = tf.contrib.layers.layer_norm(first_layer)
                 second_layer = tf.contrib.layers.fully_connected(first_layer, self.SECOND_LAYER_SIZE)
                 third_layer = tf.contrib.layers.fully_connected(second_layer, self.THIRD_LAYER_SIZE)
+                third_layer = tf.contrib.layers.layer_norm(third_layer)
                 fourth_layer = tf.contrib.layers.fully_connected(third_layer, self.FOURTH_LAYER_SIZE)
 
                 fifth_layer = tf.contrib.layers.fully_connected(fourth_layer, 1, activation_fn=tf.nn.sigmoid)
@@ -71,8 +73,7 @@ class NeuralNet(object):
                 self._prediction_normalized = tf.nn.softmax(logits)
                 # self._loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits=logits, labels=self._target_distribution))
                 self._loss = -tf.reduce_mean(tf.log(logits) * self._reward_holder)
-                self._debug_stat = tf.log(logits)[:2]
-                self._debug_stat2 = self._reward_holder[:2]
+                self._debug_stat = fifth_layer
 
                 self._optimizer = tf.train.AdamOptimizer(learning_rate=1e-4).minimize(self._loss)
                 self._saver = tf.train.Saver()
@@ -96,7 +97,7 @@ class NeuralNet(object):
         return loss
 
     def debug_stat(self, input_data, rewards):
-        return self._session.run([self._debug_stat, self._debug_stat2],
+        return self._session.run([self._debug_stat],
                                  feed_dict={self._features: normalize_input(input_data),
                                             self._reward_holder: rewards})
 

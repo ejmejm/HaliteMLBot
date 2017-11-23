@@ -62,6 +62,7 @@ def main():
             if s % 25 == 0 or s == args.steps - 1:
                 validation_loss = nn.compute_loss(x_validation, rewards_validation)
                 print("Step: {}, cross validation loss: {}, training_loss: {}".format(s, validation_loss, training_loss))
+                print(nn.debug_stat(x_validation, rewards_validation))
                 curves.append((s, training_loss, validation_loss))
 
         cf = pd.DataFrame(curves, columns=['step', 'training_loss', 'cv_loss'])
