@@ -55,7 +55,7 @@ class Bot:
             # Produce features for each planet.
             features = self.produce_features(game_map)
 
-            if random.random() < 0.1:
+            if random.random() < rand_action_chance:
                 predictions = []
                 pred_sum = 0.
                 for i in range(PLANET_MAX_NUM):
@@ -71,10 +71,10 @@ class Bot:
             # Write features and action to file
             f.write("a" + str(np.argmax(predictions)) + "\n")
             for planet in features:
-                if planet != [0] * PER_PLANET_FEATURES:
-                    for element in planet:
-                        f.write(str(element) + ",")
-                    f.write("\n")
+                #if planet != [0] * PER_PLANET_FEATURES:
+                for element in planet:
+                    f.write(str(element) + ",")
+                f.write("\n")
             f.write("-\n")
 
             # Use simple greedy algorithm to assign closest ships to each planet according to predictions.

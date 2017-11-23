@@ -23,6 +23,8 @@ PER_PLANET_FEATURES = len(FEATURE_NAMES)
 player_0_name = "Ejmejm"
 player_1_name = "EjmejmCPU"
 
+rand_action_chance = 0.2
+
 gamma = 0.99
 
 def distance2(x1, y1, x2, y2):

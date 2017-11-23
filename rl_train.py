@@ -39,10 +39,10 @@ def main():
             nn = NeuralNet(cached_model=args.cache, seed=args.seed, processor="GPU")
 
         x_data, actions, rewards = read_data()
-        #rewards = stack_rewards(rewards)
+        # rewards = stack_rewards(rewards)
 
         data_size = len(x_data)
-        x_train, actions_train, rewards_train = x_data[:int(0.85 * data_size)], action[:int(0.85 * data_size)], rewards[:int(0.85 * data_size)]
+        x_train, actions_train, rewards_train = x_data[:int(0.85 * data_size)], actions[:int(0.85 * data_size)], rewards[:int(0.85 * data_size)]
         x_validation, actions_validation, rewards_validation = x_data[int(0.85 * data_size):], actions[int(0.85 * data_size):], rewards[int(0.85 * data_size):]
 
         training_data_size = len(x_train)
@@ -58,7 +58,7 @@ def main():
         for s in range(args.steps):
             start = (s * args.minibatch_size) % training_data_size
             end = start + args.minibatch_size
-            training_loss = nn.fit(x_train[start:end], actions[start:end], rewards_train[start:end])
+            training_loss = nn.fit(x_train[start:end], actions_train[start:end], rewards_train[start:end])
             if s % 25 == 0 or s == args.steps - 1:
                 validation_loss = nn.compute_loss(x_validation, actions_validation, rewards_validation)
                 print("Step: {}, cross validation loss: {}, training_loss: {}".format(s, validation_loss, training_loss))
@@ -110,11 +110,15 @@ def read_data():
 
                 done = False
                 while not done:
+                    faulty = False
                     x_turn.append([])
                     rewards_turn.append(0)
                     actions_turn.append(int(f.readline()[1:-1]))
-                    for i in range(n_planets):
+                    for i in range(PLANET_MAX_NUM):
                         line = f.readline()[:-2]
+                        if line == "":
+                            faulty = True
+                            break
                         val_line = line.split(",")
                         x_turn[-1].append([float(val) for val in val_line[:-1]])
                         x_turn[-1][-1].append(float(val_line[-1] == "True"))
@@ -122,9 +126,11 @@ def read_data():
                         # TODO: Check how changing ownership affects planet production
                         # if len(x_turn >= 2) and x_turn[-1][3] >= 0 and x_turn[-1][3] < x_turn[-2][3]: # If player produces a ship
                         #     rewards_turn[-1] += 0.01
-                    for i in range(PLANET_MAX_NUM - n_planets):
-                        x_turn[-1].append([0] * PER_PLANET_FEATURES)
-                    if f.readline()[:-1] == "-!":
+                    if faulty:
+                        x_turn = x_turn[:-1]
+                        rewards_turn = rewards_turn[:-1]
+                        actions_turn = actions_turn[:-1]
+                    elif f.readline()[:-1] == "-!":
                         done = True
                         if f.readline() == "WIN":
                             rewards_turn[-1] += 1
