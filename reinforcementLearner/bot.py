@@ -55,14 +55,6 @@ class Bot:
             # Produce features for each planet.
             features = self.produce_features(game_map)
 
-            # Write features to file
-            for planet in features:
-                if planet != [0] * PER_PLANET_FEATURES:
-                    for element in planet:
-                        f.write(str(element) + ",")
-                    f.write("\n")
-            f.write("-\n")
-
             if random.random() < 0.1:
                 predictions = []
                 for i in range(PLANET_MAX_NUM):
@@ -71,6 +63,15 @@ class Bot:
             else:
                 # Find predictions which planets we should send ships to.
                 predictions = self._neural_net.predict(features)
+
+            # Write features and action to file
+            for planet in features:
+                if planet != [0] * PER_PLANET_FEATURES:
+                    f.write("a" + str(predictions.index(max(predictions))) + "\n")
+                    for element in planet:
+                        f.write(str(element) + ",")
+                    f.write("\n")
+            f.write("-\n")
 
             # Use simple greedy algorithm to assign closest ships to each planet according to predictions.
             ships_to_planets_assignment = self.produce_ships_to_planets_assignment(game_map, predictions)
