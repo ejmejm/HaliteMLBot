@@ -112,8 +112,8 @@ def read_data():
                 while not done:
                     faulty = False
                     x_turn.append([])
-                    rewards_turn.append(0)
                     actions_turn.append(int(f.readline()[1:-1]))
+                    rewards_turn.append(int(f.readline()[1:-1]) * 0.1)
                     for i in range(PLANET_MAX_NUM):
                         line = f.readline()[:-2]
                         if line == "":
@@ -137,6 +137,7 @@ def read_data():
                         else:
                             rewards_turn[-1] -= -1
                 discount_rewards(rewards_turn)
+                print(rewards_turn[:10])
 
                 x_data.extend(x_turn)
                 actions.extend(actions_turn)

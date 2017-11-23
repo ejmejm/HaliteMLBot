@@ -41,6 +41,8 @@ class Bot:
                 continue
         f = open("rlData/gameData_"+str(new_index)+".data", "w")
 
+        n_my_ships = 3
+
         first_loop = True
         while True:
             # Update the game map.
@@ -68,8 +70,13 @@ class Bot:
                 # Find predictions which planets we should send ships to.
                 predictions = self._neural_net.predict(features)
 
+            # Get change in ships
+            delta_ships = len(game_map.get_me().all_ships()) - n_my_ships
+            n_my_ships += delta_ships
+
             # Write features and action to file
             f.write("a" + str(np.argmax(predictions)) + "\n")
+            f.write("r" + str(delta_ships) + "\n")
             for planet in features:
                 #if planet != [0] * PER_PLANET_FEATURES:
                 for element in planet:
