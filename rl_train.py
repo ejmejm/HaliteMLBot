@@ -122,18 +122,21 @@ def read_data():
                     x_turn.append([])
                     actions_turn.append(int(f.readline()[1:-1]))
                     rewards_turn.append(int(f.readline()[1:-1]) * 0.1)
-                    for i in range(PLANET_MAX_NUM):
-                        line = f.readline()[:-2]
-                        if line == "":
-                            faulty = True
-                            break
-                        val_line = line.split(",")
-                        x_turn[-1].append([float(val) for val in val_line[:-1]])
-                        x_turn[-1][-1].append(float(val_line[-1] == "True"))
-                        # Add reward for each ship produced
-                        # TODO: Check how changing ownership affects planet production
-                        # if len(x_turn >= 2) and x_turn[-1][3] >= 0 and x_turn[-1][3] < x_turn[-2][3]: # If player produces a ship
-                        #     rewards_turn[-1] += 0.01
+                    try:
+                        for i in range(PLANET_MAX_NUM):
+                            line = f.readline()[:-2]
+                            if line == "":
+                                faulty = True
+                                break
+                            val_line = line.split(",")
+                            x_turn[-1].append([float(val) for val in val_line[:-1]])
+                            x_turn[-1][-1].append(float(val_line[-1] == "True"))
+                            # Add reward for each ship produced
+                            # TODO: Check how changing ownership affects planet production
+                            # if len(x_turn >= 2) and x_turn[-1][3] >= 0 and x_turn[-1][3] < x_turn[-2][3]: # If player produces a ship
+                            #     rewards_turn[-1] += 0.01
+                    except ValueError:
+                        faulty = True
                     if faulty:
                         x_turn = x_turn[:-1]
                         rewards_turn = rewards_turn[:-1]
