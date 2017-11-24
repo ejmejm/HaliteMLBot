@@ -23,7 +23,7 @@ PER_PLANET_FEATURES = len(FEATURE_NAMES)
 player_0_name = "Ejmejm"
 player_1_name = "EjmejmCPU"
 
-rand_action_chance = 0.2
+rand_action_chance = 0.15
 
 gamma = 0.99
 

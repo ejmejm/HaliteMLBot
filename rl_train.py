@@ -14,7 +14,7 @@ def main():
     parser = argparse.ArgumentParser(description="Halite II training")
     parser.add_argument("--model_name", help="Name of the model")
     parser.add_argument("--minibatch_size", type=int, help="Size of the minibatch", default=100)
-    parser.add_argument("--steps", type=int, help="Number of steps in the training", default=500)
+    parser.add_argument("--steps", type=int, help="Number of steps in the training", default=3000)
     parser.add_argument("--cache", help="Location of the model we should continue to train")
     parser.add_argument("--games_limit", type=int, help="Train on up to games_limit games", default=1000)
     parser.add_argument("--sp_batch_size", type=int, help="How many self play games to generate per round of training", default=20)
@@ -120,9 +120,9 @@ def read_data():
                 while not done:
                     faulty = False
                     x_turn.append([])
-                    actions_turn.append(int(f.readline()[1:-1]))
-                    rewards_turn.append(int(f.readline()[1:-1]) * 0.1)
                     try:
+                        actions_turn.append(int(f.readline()[1:-1]))
+                        rewards_turn.append(int(f.readline()[1:-1]) * 0.1)
                         for i in range(PLANET_MAX_NUM):
                             line = f.readline()[:-2]
                             if line == "":
@@ -141,6 +141,7 @@ def read_data():
                         x_turn = x_turn[:-1]
                         rewards_turn = rewards_turn[:-1]
                         actions_turn = actions_turn[:-1]
+                        break
                     elif f.readline()[:-1] == "-!":
                         done = True
                         if f.readline() == "WIN":

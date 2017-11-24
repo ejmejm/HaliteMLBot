@@ -42,6 +42,8 @@ class Bot:
         f = open("rlData/gameData_"+str(new_index)+".data", "w")
 
         n_my_ships = 3
+        rnd_loop = 0
+        curr_predictions = [0] * PLANET_MAX_NUM
 
         first_loop = True
         while True:
@@ -56,19 +58,25 @@ class Bot:
 
             # Produce features for each planet.
             features = self.produce_features(game_map)
-
-            if random.random() < rand_action_chance:
-                predictions = []
-                pred_sum = 0.
-                for i in range(PLANET_MAX_NUM):
-                    num = random.random()
-                    predictions.append(num)
-                    pred_sum += num
-                predictions = [f/pred_sum for f in predictions]
-                # print(predictions)
+            if rnd_loop <= 0:
+                if random.random() < rand_action_chance:
+                    rnd_loop = 3
+                    predictions = []
+                    pred_sum = 0.
+                    for i in range(PLANET_MAX_NUM):
+                        num = random.random()
+                        predictions.append(num)
+                        pred_sum += num
+                    predictions = [f/pred_sum for f in predictions]
+                    curr_predictions = predictions
+                    # print(predictions)
+                else:
+                    # Find predictions which planets we should send ships to.
+                    predictions = self._neural_net.predict(features)
+                    curr_predictions = predictions
             else:
-                # Find predictions which planets we should send ships to.
-                predictions = self._neural_net.predict(features)
+                rnd_loop -= 1
+                predictions = curr_predictions
 
             # Get change in ships
             delta_ships = len(game_map.get_me().all_ships()) - n_my_ships
