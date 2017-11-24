@@ -33,13 +33,19 @@ def main():
         print("Generating new self play data...")
         gen_data(args.sp_batch_size, cache=args.cache, debug=False)
 
-        if not args.cpu:
-            nn = NeuralNet(cached_model=args.cache, seed=args.seed, processor="CPU")
+        if args.cache == "None" or args.cache is None:
+            cached_model = None
         else:
-            nn = NeuralNet(cached_model=args.cache, seed=args.seed, processor="GPU")
+            cached_model = "models/" + args.cache
+
+        if not args.cpu:
+            nn = NeuralNet(cached_model=cached_model, seed=args.seed, processor="CPU")
+        else:
+            nn = NeuralNet(cached_model=cached_model, seed=args.seed, processor="GPU")
 
         x_data, actions, rewards = read_data()
         # rewards = stack_rewards(rewards)
+        print("Epoch avg reward:", np.average(rewards))
 
         data_size = len(x_data)
         x_train, actions_train, rewards_train = x_data[:int(0.85 * data_size)], actions[:int(0.85 * data_size)], rewards[:int(0.85 * data_size)]
@@ -59,9 +65,10 @@ def main():
             start = (s * args.minibatch_size) % training_data_size
             end = start + args.minibatch_size
             training_loss = nn.fit(x_train[start:end], actions_train[start:end], rewards_train[start:end])
+            print("Batch avg reward:", np.average(rewards_train[start:end]))
             if s % 25 == 0 or s == args.steps - 1:
                 validation_loss = nn.compute_loss(x_validation, actions_validation, rewards_validation)
-                print("Step: {}, cross validation loss: {}, training_loss: {}".format(s, validation_loss, training_loss))
+                #print("Step: {}, cross validation loss: {}, training_loss: {}".format(s, validation_loss, training_loss))
                 # print(nn.debug_stat(x_validation, actions_validation, rewards_validation))
                 curves.append((s, training_loss, validation_loss))
 
@@ -73,7 +80,8 @@ def main():
         model_path = os.path.join(current_directory, "models", args.model_name + ".ckpt")
         print("Training epoch finished, serializing model to {}".format(model_path))
         nn.save(model_path)
-        args.cache = model_path
+        if args.cache == None:
+            args.cache = args.model_name + ".ckpt"
         nn._session.close()
         print("Model serialized")
 
@@ -137,7 +145,6 @@ def read_data():
                         else:
                             rewards_turn[-1] -= -1
                 discount_rewards(rewards_turn)
-                print(rewards_turn[:10])
 
                 x_data.extend(x_turn)
                 actions.extend(actions_turn)

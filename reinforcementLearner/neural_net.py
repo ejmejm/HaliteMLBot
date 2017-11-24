@@ -23,10 +23,10 @@ def normalize_input(input_data):
 
 
 class NeuralNet(object):
-    FIRST_LAYER_SIZE = 128
-    SECOND_LAYER_SIZE = 128
-    THIRD_LAYER_SIZE = 64
-    FOURTH_LAYER_SIZE = 32
+    FIRST_LAYER_SIZE = 512
+    SECOND_LAYER_SIZE = 512
+    THIRD_LAYER_SIZE = 256
+    FOURTH_LAYER_SIZE = 128
 
     def __init__(self, cached_model=None, seed=None, processor="GPU"):
         self._graph = tf.Graph()
@@ -51,7 +51,7 @@ class NeuralNet(object):
 
                 # Combine all the planets from all the frames together, so it's easier to share
                 # the weights and biases between them in the network.
-                flattened_frames = tf.reshape(self._features, [-1, PER_PLANET_FEATURES])
+                flattened_frames = tf.reshape(self._features, [-1, PLANET_MAX_NUM * PER_PLANET_FEATURES])
 
                 first_layer = tf.contrib.layers.fully_connected(flattened_frames, self.FIRST_LAYER_SIZE)
                 # first_layer = tf.contrib.layers.layer_norm(first_layer)
@@ -60,7 +60,7 @@ class NeuralNet(object):
                 # third_layer = tf.contrib.layers.layer_norm(third_layer)
                 fourth_layer = tf.contrib.layers.fully_connected(third_layer, self.FOURTH_LAYER_SIZE)
 
-                fifth_layer = tf.contrib.layers.fully_connected(fourth_layer, 1, activation_fn=tf.nn.relu)
+                fifth_layer = tf.contrib.layers.fully_connected(fourth_layer, PLANET_MAX_NUM, activation_fn=tf.nn.relu)
 
                 # Group the planets back in frames.
                 logits = tf.reshape(fifth_layer, [-1, PLANET_MAX_NUM], name="logits")
@@ -81,7 +81,7 @@ class NeuralNet(object):
                 self._loss = -tf.reduce_mean(tf.log(responsible_outputs) * self._reward_holder)
                 self._debug_stat = fifth_layer
 
-                self._optimizer = tf.train.AdamOptimizer(learning_rate=1e-4).minimize(self._loss)
+                self._optimizer = tf.train.AdamOptimizer(learning_rate=1e-3).minimize(self._loss)
                 self._saver = tf.train.Saver()
 
                 if cached_model is None:
